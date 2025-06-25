@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotify Explorer</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #1DB954;
+            --dark: #191414;
+            --light: #FFFFFF;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--dark);
+            color: var(--light);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h1 {
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+        .section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .section-title {
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        input, button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        input {
+            width: 300px;
+            margin-right: 10px;
+        }
+        button {
+            background-color: var(--primary);
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #1ED760;
+        }
+        .results {
+            margin-top: 20px;
+        }
+        .song-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            transition: transform 0.3s;
+        }
+        .song-card:hover {
+            transform: translateY(-3px);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .song-name {
+            font-weight: bold;
+            font-size: 18px;
+            color: var(--primary);
+        }
+        .artist {
+            color: #B3B3B3;
+            margin-bottom: 8px;
+        }
+        .features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .feature {
+            background: rgba(29, 185, 84, 0.2);
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 14px;
+        }
+        .mood-buttons {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .mood-btn {
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .mood-btn:hover {
+            transform: scale(1.05);
+        }
+        #party-btn { background: #FF5E5B; }
+        #chill-btn { background: #5B8CFF; }
+        #sad-btn { background: #A05BFF; }
+        #focus-btn { background: #FFBD5B; }
+        .chart-container {
+            max-width: 600px;
+            margin: 20px auto;
+        }
+        .time-machine {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        #yearSlider {
+            flex-grow: 1;
+        }
+        #yearDisplay {
+            font-weight: bold;
+            min-width: 40px;
+        }
+        .error {
+            color: #FF5E5B;
+            padding: 10px;
+            background: rgba(255, 94, 91, 0.1);
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>Spotify Music Explorer</h1>
+        <p>Discover music through data analysis</p>
+    </header>
+
+    <!-- Song Recommendation Section -->
+    <section class="section">
+        <h2 class="section-title">Song Recommender</h2>
+        <div>
+            <input type="text" id="songInput" placeholder="Enter a song name...">
+            <button onclick="getRecommendations()">Find Similar Songs</button>
+        </div>
+        <div id="recommendationResults" class="results"></div>
+    </section>
+
+    <!-- Mood Playlist Section -->
+    <section class="section">
+        <h2 class="section-title">Mood Playlists</h2>
+        <p>Generate playlists based on your current mood:</p>
+        <div class="mood-buttons">
+            <button id="party-btn" class="mood-btn" onclick="getMoodPlaylist('party')">🎉 Party</button>
+            <button id="chill-btn" class="mood-btn" onclick="getMoodPlaylist('chill')">🍃 Chill</button>
+            <button id="sad-btn" class="mood-btn" onclick="getMoodPlaylist('sad')">😢 Sad</button>
+            <button id="focus-btn" class="mood-btn" onclick="getMoodPlaylist('focus')">📚 Focus</button>
+        </div>
+        <div id="moodResults" class="results"></div>
+    </section>
+
+    <!-- Song Comparison Section -->
+    <section class="section">
+        <h2 class="section-title">Compare Songs</h2>
+        <div>
+            <input type="text" id="song1" placeholder="First song">
+            <input type="text" id="song2" placeholder="Second song">
+            <button onclick="compareSongs()">Compare</button>
+        </div>
+        <div class="chart-container">
+            <canvas id="comparisonChart"></canvas>
+        </div>
+    </section>
+
+    <!-- Time Machine Section -->
+    <section class="section">
+        <h2 class="section-title">Time Machine</h2>
+        <p>Discover popular songs from any year:</p>
+        <div class="time-machine">
+            <input type="range" id="yearSlider" min="2000" max="2023" value="2015">
+            <span id="yearDisplay">2015</span>
+            <button onclick="loadYearSongs()">Travel</button>
+        </div>
+        <div id="timeResults" class="results"></div>
+    </section>
+</div>
+
+<script>
+    // Global chart reference
+    let comparisonChart;
+
+    // Initialize year slider display
+    document.getElementById('yearSlider').addEventListener('input', function() {
+        document.getElementById('yearDisplay').textContent = this.value;
+    });
+
+    // Recommendation function
+    async function getRecommendations() {
+        const songName = document.getElementById('songInput').value.trim();
+        if (!songName) {
+            showError('recommendationResults', 'Please enter a song name');
+            return;
+        }
+
+        showLoading('recommendationResults');
+
+        try {
+            const response = await fetch('http://localhost:5000/recommend', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ song_name: songName })
+            });
+
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+
+            const data = await response.json();
+
+            let html = `
+                    <div class="song-card">
+                        <div class="song-name">${data.input_song.track_name}</div>
+                        <div class="artist">by ${data.input_song.artist_name}</div>
+                        <p>Similar songs:</p>
+                `;
+
+            data.recommendations.forEach(song => {
+                html += `
+                    <div class="song-card">
+                        <div class="song-name">${song.track_name}</div>
+                        <div class="artist">by ${song.artist_name}</div>
+                        <div class="features">
+                            <span class="feature">Dance: ${Math.round(song.danceability * 100)}%</span>
+                            <span class="feature">Energy: ${Math.round(song.energy * 100)}%</span>
+                            <span class="feature">Tempo: ${Math.round(song.tempo)} BPM</span>
+                        </div>
+                    </div>
+                    `;
+            });
+
+            document.getElementById('recommendationResults').innerHTML = html;
+        } catch (error) {
+            showError('recommendationResults', error.message);
+        }
+    }
+
+    // Mood playlist function
+    async function getMoodPlaylist(mood) {
+        const moodNames = {
+            'party': 'Party 🎉',
+            'chill': 'Chill 🍃',
+            'sad': 'Sad 😢',
+            'focus': 'Focus 📚'
+        };
+
+        showLoading('moodResults');
+
+        try {
+            const response = await fetch('http://localhost:5000/mood', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ mood: mood })
+            });
+
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+
+            const songs = await response.json();
+
+            let html = `<h3>${moodNames[mood]} Playlist</h3>`;
+            songs.forEach(song => {
+                html += `
+                    <div class="song-card">
+                        <div class="song-name">${song.track_name}</div>
+                        <div class="artist">by ${song.artist_name}</div>
+                    </div>
+                    `;
+            });
+
+            document.getElementById('moodResults').innerHTML = html;
+        } catch (error) {
+            showError('moodResults', error.message);
+        }
+    }
+
+    // Song comparison function
+    async function compareSongs() {
+        const song1 = document.getElementById('song1').value.trim();
+        const song2 = document.getElementById('song2').value.trim();
+
+        if (!song1 || !song2) {
+            alert('Please enter two song names');
+            return;
+        }
+
+        try {
+            const response = await fetch('http://localhost:5000/compare', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ song1: song1, song2: song2 })
+            });
+
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+
+            const songs = await response.json();
+
+            if (songs.length < 2) {
+                throw new Error('Could not find both songs');
+            }
+
+            const ctx = document.getElementById('comparisonChart').getContext('2d');
+
+            if (comparisonChart) {
+                comparisonChart.destroy();
+            }
+
+            comparisonChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Danceability', 'Energy', 'Loudness', 'Acousticness', 'Instrumentalness', 'Valence'],
+                    datasets: [{
+                        label: songs[0].track_name,
+                        data: [
+                            songs[0].danceability * 100,
+                            songs[0].energy * 100,
+                            (songs[0].loudness + 60) * 2,
+                            songs[0].acousticness * 100,
+                            songs[0].instrumentalness * 100,
+                            songs[0].valence * 100
+                        ],
+                        backgroundColor: 'rgba(29, 185, 84, 0.2)',
+                        borderColor: 'rgba(29, 185, 84, 1)',
+                        borderWidth: 2
+                    }, {
+                        label: songs[1].track_name,
+                        data: [
+                            songs[1].danceability * 100,
+                            songs[1].energy * 100,
+                            (songs[1].loudness + 60) * 2,
+                            songs[1].acousticness * 100,
+                            songs[1].instrumentalness * 100,
+                            songs[1].valence * 100
+                        ],
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    scales: {
+                        r: {
+                            angleLines: { display: true },
+                            suggestedMin: 0,
+                            suggestedMax: 100,
+                            ticks: { stepSize: 20 }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + context.raw.toFixed(1);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        } catch (error) {
+            alert(error.message);
+        }
+    }
+
+    // Time machine function
+    async function loadYearSongs() {
+        const year = document.getElementById('yearSlider').value;
+
+        showLoading('timeResults');
+
+        try {
+            const response = await fetch(`http://localhost:5000/time-machine/${year}`);
+
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+
+            const songs = await response.json();
+
+            let html = `<h3>Top Songs of ${year}</h3>`;
+            songs.forEach((song, index) => {
+                html += `
+                    <div class="song-card">
+                        <div class="song-name">${index + 1}. ${song.track_name}</div>
+                        <div class="artist">by ${song.artist_name}</div>
+                        <div class="features">
+                            <span class="feature">Energy: ${Math.round(song.energy * 100)}%</span>
+                            <span class="feature">Tempo: ${Math.round(song.tempo)} BPM</span>
+                        </div>
+                    </div>
+                    `;
+            });
+
+            document.getElementById('timeResults').innerHTML = html;
+        } catch (error) {
+            showError('timeResults', error.message);
+        }
+    }
+
+    // Helper functions
+    function showLoading(elementId) {
+        document.getElementById(elementId).innerHTML = '<p>Loading...</p>';
+    }
+
+    function showError(elementId, message) {
+        document.getElementById(elementId).innerHTML = `
+                <div class="error">
+                    <p>${message}</p>
+                    <p>Please try again</p>
+                </div>
+            `;
+    }
+</script>
+</body>
+</html>
